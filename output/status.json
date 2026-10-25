@@ -1,6 +1,6 @@
 {
   "url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
-  "fetched_at_utc": "2026-10-25T18:11:27.888995+00:00",
+  "fetched_at_utc": "2026-10-25T18:12:22.529764+00:00",
   "status": "success",
   "http_status": 200,
   "final_url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
@@ -36,8 +36,8 @@
     "naro, 164 votos (29,66%)\nArábia Saudita\n2º turno:\nLula, 49 votos (61,25%)\n2º turno:\nFlávio, 31 votos (38,75%)\n1º turno:\nLula, 52 votos\n1º turno:\nFlávio, 22 votos\n👉 2º turno de 2022: Lula, 38 votos (67,86%) x Jair Bolsonaro, 18 votos (32,14%)\nBahrein\n2º turno:\nainda não há dados disponíveis\n2º turno:\nainda não há dados disp",
     "Arábia Saudita\n2º turno:\nLula, 49 votos (61,25%)\n2º turno:\nFlávio, 31 votos (38,75%)\n1º turno:\nLula, 52 votos\n1º turno:\nFlávio, 22 votos\n👉 2º turno de 2022: Lula, 38 votos (67,86%) x Jair Bolsonaro, 18 votos (32,14%)\nBahrein\n2º turno:\nainda não há dados disponíveis\n2º turno:\nainda não há dados disponíveis\n1º turno:\nFlávio, 2"
   ],
-  "extracted_rows": 36,
-  "countries": 36,
-  "lula": 59932,
-  "flavio": 24889
+  "extracted_rows": 48,
+  "countries": 48,
+  "lula": 71895,
+  "flavio": 56277
 }
