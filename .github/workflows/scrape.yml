@@ -1,12 +1,6 @@
 name: Scrape G1 results
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'output/**'
   workflow_dispatch:
-  schedule:
-    - cron: '*/5 * * * *'
 permissions:
   contents: write
 concurrency:
@@ -23,39 +17,37 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Scrape every minute for five iterations
+      - name: Scrape once and append execution log
         shell: bash
         run: |
           mkdir -p output
-          for i in 1 2 3 4 5; do
-            echo "Scrape iteration $i of 5"
-            python scraper.py || true
-            python - <<'PY'
+          python scraper.py
+          result=$?
+          python - <<'PY'
           import datetime, json
           from pathlib import Path
-          status_file = Path("output/status.json")
+          path = Path("output/status.json")
           now = datetime.datetime.now(datetime.timezone.utc).isoformat()
           try:
-              status = json.loads(status_file.read_text(encoding="utf-8"))
+              status = json.loads(path.read_text(encoding="utf-8"))
           except Exception as exc:
               status = {"status": "error", "error": "Cannot read status: " + str(exc)}
           status["updated_at_utc"] = now
           status["run_url"] = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          status_file.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+          path.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
           entry = {
               "timestamp_utc": now,
               "source_fetched_at_utc": status.get("fetched_at_utc"),
               "status": status.get("status", "error"),
               "countries": status.get("countries"),
               "error": status.get("error"),
-              "run_url": status["run_url"],
+              "run_url": status["run_url"]
           }
           with Path("output/execution_log.jsonl").open("a", encoding="utf-8") as log:
               log.write(json.dumps(entry, ensure_ascii=False) + "\n")
           print(json.dumps(entry, ensure_ascii=False))
           PY
-            if [ "$i" -lt 5 ]; then sleep 60; fi
-          done
+          exit "$result"
       - name: Persist status, log and results
         if: always()
         shell: bash
