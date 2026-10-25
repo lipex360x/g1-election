@@ -91,7 +91,7 @@ def parse_country_sections(html):
             if re.match(r"^1[ºo°]\\s*turno", item, re.I):
                 break
             block.append(item)
-        if not block or not any("2º turno" in x for x in block):
+        if not block or not any(re.match(r"^2[ºo°]\\s*turno", x, re.I) for x in block):
             continue
         found = {}
         for item in block:
@@ -144,7 +144,7 @@ def main():
         info["contains_lula"] = "lula" in html.lower()
         info["contains_flavio"] = "flávio" in html.lower() or "flavio" in html.lower()
         response.raise_for_status()
-        records = parse_country_sections(html) + parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
+        records = parse_country_sections(html) + parse_tables(html) + parse_embedded_json(html)
         article_text = (OUT / "article_text.txt").read_text(encoding="utf-8")
         info["article_text_chars"] = len(article_text)
         info["article_text_sample"] = article_text[:12000]
