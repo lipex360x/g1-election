@@ -1,6 +1,6 @@
 {
   "url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
-  "fetched_at_utc": "2026-10-25T18:09:12.487126+00:00",
+  "fetched_at_utc": "2026-10-25T18:09:45.464739+00:00",
   "status": "error",
   "http_status": 200,
   "final_url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
@@ -12,5 +12,5 @@
   "script_count": 56,
   "contains_lula": true,
   "contains_flavio": true,
-  "error": "missing ), unterminated subpattern at position 89"
+  "error": "[Errno 2] No such file or directory: 'output/article_text.txt'"
 }
