@@ -15,12 +15,12 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chr
 
 def votes(value):
     s = str(value).strip().replace("\u00a0", "")
-    if re.fullmatch(r"\\d{1,3}(?:\\.\\d{3})+|\\d+", s):
+    if re.fullmatch(r"\d{1,3}(?:\.\d{3})+|\d+", s):
         return int(s.replace(".", ""))
     return None
 
 def clean(value):
-    return re.sub(r"\\s+", " ", str(value)).strip()
+    return re.sub(r"\s+", " ", str(value)).strip()
 
 def parse_tables(html):
     found = []
@@ -48,7 +48,7 @@ def parse_lines(html):
     article = soup.select_one("article") or soup.select_one("main") or soup
     text = article.get_text("\n", strip=True)
     (OUT / "article_text.txt").write_text(text, encoding="utf-8")
-    pattern = re.compile(r"^(.{3,80}?)\\s*[-|:]\\s*Lula\\s*:?\\s*([\\d.]+)\\s*(?:votos)?\\s*[,;|/-]\\s*Fl[aá]vio(?: Bolsonaro)?\\s*:?\\s*([\\d.]+)", re.I)
+    pattern = re.compile(r"^(.{3,80}?)\s*[-|:]\s*Lula\s*:?\s*([\d.]+)\s*(?:votos)?\s*[,;|/-]\s*Fl[aá]vio(?: Bolsonaro)?\s*:?\s*([\d.]+)", re.I)
     found = []
     for line in text.splitlines():
         match = pattern.search(line)
@@ -63,8 +63,8 @@ def parse_lines(html):
         if not re.fullmatch(r"[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,65}", line):
             continue
         nearby = " | ".join(lines[i+1:i+9])
-        lm = re.search(r"Lula[^|]{0,70}?(\\d{1,3}(?:\\.\\d{3})+|\\d+)\\s*(?:votos)?", nearby, re.I)
-        fm = re.search(r"Fl[aá]vio(?: Bolsonaro)?[^|]{0,70}?(\\d{1,3}(?:\\.\\d{3})+|\\d+)\\s*(?:votos)?", nearby, re.I)
+        lm = re.search(r"Lula[^|]{0,70}?(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos)?", nearby, re.I)
+        fm = re.search(r"Fl[aá]vio(?: Bolsonaro)?[^|]{0,70}?(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos)?", nearby, re.I)
         if lm and fm:
             l, f = votes(lm.group(1)), votes(fm.group(1))
             if l is not None and f is not None:
@@ -75,23 +75,23 @@ def parse_country_sections(html):
     """Extract second-round votes from country headings and their adjacent blocks."""
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one("article") or soup.select_one("main") or soup
-    lines = [clean(x) for x in article.get_text("\\n", strip=True).splitlines()]
+    lines = [clean(x) for x in article.get_text("\n", strip=True).splitlines()]
     lines = [x for x in lines if x]
     rows = []
-    number = r"(\\d{1,3}(?:\\.\\d{3})+|\\d+)"
-    candidate = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\\s*,\\s*" + number + r"\\s*(?:votos?)?\\s*(?:\\(|$)", re.I)
+    number = r"(\d{1,3}(?:\.\d{3})+|\d+)"
+    candidate = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*" + number + r"\s*(?:votos?)?\s*(?:\(|$)", re.I)
     for i, country in enumerate(lines):
         if not re.fullmatch(r"[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}", country):
             continue
         # Country heading must be immediately followed by a 2nd-round label.
-        if not re.match(r"^2[ºo°]\\s*turno\\s*:?", " ".join(lines[i+1:i+3]), re.I):
+        if not re.match(r"^2[ºo°]\s*turno\s*:?", " ".join(lines[i+1:i+3]), re.I):
             continue
         block = []
         for item in lines[i+1:i+16]:
-            if re.match(r"^1[ºo°]\\s*turno", item, re.I):
+            if re.match(r"^1[ºo°]\s*turno", item, re.I):
                 break
             block.append(item)
-        if not block or not any(re.match(r"^2[ºo°]\\s*turno", x, re.I) for x in block):
+        if not block or not any(re.match(r"^2[ºo°]\s*turno", x, re.I) for x in block):
             continue
         found = {}
         for item in block:
