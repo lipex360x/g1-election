@@ -1,11 +1,11 @@
 {
   "url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
-  "fetched_at_utc": "2026-10-25T18:52:01.643761+00:00",
+  "fetched_at_utc": "2026-10-25T18:56:25.478540+00:00",
   "status": "success",
   "http_status": 200,
   "final_url": "https://g1.globo.com/mundo/noticia/2026/10/25/votacao-no-exterior-confira-os-resultados-do-2o-turno-entre-lula-e-flavio-bolsonaro.ghtml",
   "page_title": "Votação no exterior: confira os votos no 2º turno entre Lula e Flávio | G1",
-  "html_bytes": 1292085,
+  "html_bytes": 1300429,
   "html_text_preview": "Votação no exterior: confira os votos no 2º turno entre Lula e Flávio | G1 Pular para o conteúdo Mundo Votação no exterior: Lula vence em 40 países; Flávio Bolsonaro, em 12 O g1 realiza um levantamento de boletins de urna de diferentes partes do mundo para antecipar os números da apuração no exterior. Resultado consolidado será divulgado pelo TSE após as 17h. Por Redação g1 25/10/2026 00h00 Atualizado 25/10/2026 1 de 7\rMapa - votação no exterior - 15h30 — Foto: Editoria de Arte/g1 Mapa - votação no exterior - 15h30 — Foto: Editoria de Arte/g1 Parcial Lula - 95.976 votos Flávio - 65.717 votos Quase 1 milhão de brasileiros que vivem no exterior estão aptos a votar no segundo turno das eleições presidenciais. A votação é realizada em 186 cidades em mais de cem países. Até as 15h26 no horário de Brasília, Lula havia vencido em 40 países ou territórios , enquanto Flávio Bolsonaro havia vencido em 12 países , segundo boletins de urna divulgados pelo Tribunal Superior Eleitoral (TSE) até o momento. AO VIVO: acompanhe o 2° turno das eleições Acesse a página de apuração do g1 Ao longo deste domingo (25), o g1 realiza um levantamento de boletins de urna de diferentes partes do mundo para ant",
   "article_count": 2,
   "table_count": 0,
@@ -40,6 +40,6 @@
   "countries": 51,
   "lula": 96413,
   "flavio": 65963,
-  "updated_at_utc": "2026-10-25T18:52:04.011896+00:00",
+  "updated_at_utc": "2026-10-25T18:56:29.090452+00:00",
   "run_url": "https://github.com/lipex360x/g1-election/actions/runs/40223253279"
 }
