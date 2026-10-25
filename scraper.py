@@ -57,6 +57,41 @@ def parse_lines(html):
             l, f = votes(l), votes(f)
             if l is not None and f is not None:
                 found.append({"País": clean(country), "Lula": l, "Flávio": f})
+    # Also handle country headings followed by candidate vote counts on separate lines.
+    lines = [clean(line) for line in text.splitlines() if clean(line)]
+    for i, line in enumerate(lines):
+        if not re.fullmatch(r"[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,65}", line):
+            continue
+        nearby = " | ".join(lines[i+1:i+9])
+        lm = re.search(r"Lula[^|]{0,70}?(\\d{1,3}(?:\\.\\d{3})+|\\d+)\\s*(?:votos)?", nearby, re.I)
+        fm = re.search(r"Fl[aá]vio(?: Bolsonaro)?[^|]{0,70}?(\\d{1,3}(?:\\.\\d{3})+|\\d+)\\s*(?:votos)?", nearby, re.I)
+        if lm and fm:
+            l, f = votes(lm.group(1)), votes(fm.group(1))
+            if l is not None and f is not None:
+                found.append({"País": line, "Lula": l, "Flávio": f})
+    return found
+
+def parse_embedded_json(html):
+    # Embedded JSON sometimes holds election rows instead of an HTML table.
+    soup = BeautifulSoup(html, "html.parser")
+    found = []
+    for script in soup.select('script[type="application/json"], script[type="application/ld+json"]'):
+        try:
+            data = json.loads(script.string or script.get_text())
+        except (ValueError, TypeError):
+            continue
+        def walk(obj):
+            if isinstance(obj, dict):
+                keys = {str(k).lower(): k for k in obj}
+                country = next((obj[k] for name,k in keys.items() if name in ("pais","país","country")), None)
+                lula = next((obj[k] for name,k in keys.items() if "lula" in name), None)
+                flavio = next((obj[k] for name,k in keys.items() if "flavio" in name or "flávio" in name), None)
+                if isinstance(country, str) and votes(lula) is not None and votes(flavio) is not None:
+                    found.append({"País":clean(country),"Lula":votes(lula),"Flávio":votes(flavio)})
+                for v in obj.values(): walk(v)
+            elif isinstance(obj, list):
+                for v in obj: walk(v)
+        walk(data)
     return found
 
 def main():
@@ -68,13 +103,14 @@ def main():
         html = response.text
         (OUT / "debug.html").write_text(html, encoding="utf-8")
         response.raise_for_status()
-        records = parse_tables(html) + parse_lines(html)
+        records = parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
         unique = {}
         for row in records:
             key = row["País"].casefold()
             if key in unique and unique[key] != row:
                 raise ValueError("Conflicting counts for " + row["País"])
             unique[key] = row
+        info["extracted_rows"] = len(records)
         if not unique:
             info["status"] = "no_structured_results"
             print("No structured country results found; inspect debug.html and article_text.txt")
