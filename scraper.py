@@ -71,6 +71,38 @@ def parse_lines(html):
                 found.append({"País": line, "Lula": l, "Flávio": f})
     return found
 
+def parse_country_sections(html):
+    """Extract second-round votes from country headings and their adjacent blocks."""
+    soup = BeautifulSoup(html, "html.parser")
+    article = soup.select_one("article") or soup.select_one("main") or soup
+    lines = [clean(x) for x in article.get_text("\\n", strip=True).splitlines()]
+    lines = [x for x in lines if x]
+    rows = []
+    number = r"(\\d{1,3}(?:\\.\\d{3})+|\\d+)"
+    candidate = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\\s*,\\s*" + number + r"\\s*(?:votos?)?\\s*(?:\\(|$)", re.I)
+    for i, country in enumerate(lines):
+        if not re.fullmatch(r"[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}", country):
+            continue
+        # Country heading must be immediately followed by a 2nd-round label.
+        if not re.match(r"^2[ºo°]\\s*turno\\s*:?", " ".join(lines[i+1:i+3]), re.I):
+            continue
+        block = []
+        for item in lines[i+1:i+16]:
+            if re.match(r"^1[ºo°]\\s*turno", item, re.I):
+                break
+            block.append(item)
+        if not block or not any("2º turno" in x for x in block):
+            continue
+        found = {}
+        for item in block:
+            match = candidate.match(item)
+            if match:
+                name = "Lula" if match.group(1).lower().startswith("lula") else "Flávio"
+                found[name] = votes(match.group(2))
+        if len(found) == 2 and all(v is not None for v in found.values()):
+            rows.append({"País":country, "Lula":found["Lula"], "Flávio":found["Flávio"]})
+    return rows
+
 def parse_embedded_json(html):
     # Embedded JSON sometimes holds election rows instead of an HTML table.
     soup = BeautifulSoup(html, "html.parser")
@@ -112,7 +144,7 @@ def main():
         info["contains_lula"] = "lula" in html.lower()
         info["contains_flavio"] = "flávio" in html.lower() or "flavio" in html.lower()
         response.raise_for_status()
-        records = parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
+        records = parse_country_sections(html) + parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
         article_text = (OUT / "article_text.txt").read_text(encoding="utf-8")
         info["article_text_chars"] = len(article_text)
         info["article_text_sample"] = article_text[:12000]
