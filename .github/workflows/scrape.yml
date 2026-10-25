@@ -52,17 +52,44 @@ jobs:
         if: always()
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p output
+          # Save this attempt's generated files before refreshing the checkout.
+          snapshot="$(mktemp -d)"
+          cp output/status.json "$snapshot/status.json"
+          if [ -f output/ranking.csv ]; then cp output/ranking.csv "$snapshot/ranking.csv"; fi
+          if [ -f output/ranking.xlsx ]; then cp output/ranking.xlsx "$snapshot/ranking.xlsx"; fi
+          # A rerun checks out the original commit. Reset to current main BEFORE
+          # copying generated files; never rebase output JSONL or binary XLSX.
+          git fetch origin main
+          git reset --hard origin/main
+          cp "$snapshot/status.json" output/status.json
+          if [ -f "$snapshot/ranking.csv" ]; then cp "$snapshot/ranking.csv" output/ranking.csv; fi
+          if [ -f "$snapshot/ranking.xlsx" ]; then cp "$snapshot/ranking.xlsx" output/ranking.xlsx; fi
+          # Recreate this attempt's single log entry on top of the latest log.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path("output/status.json").read_text(encoding="utf-8"))
+          entry = {
+              "timestamp_utc": status.get("updated_at_utc"),
+              "source_fetched_at_utc": status.get("fetched_at_utc"),
+              "status": status.get("status", "error"),
+              "countries": status.get("countries"),
+              "error": status.get("error"),
+              "run_url": status.get("run_url"),
+          }
+          with Path("output/execution_log.jsonl").open("a", encoding="utf-8") as log:
+              log.write(json.dumps(entry, ensure_ascii=False) + "\n")
+          PY
           git add -f output/status.json output/execution_log.jsonl
           for file in output/*.csv output/*.xlsx; do
             if [ -f "$file" ]; then git add -f "$file"; fi
           done
           if ! git diff --cached --quiet; then
             git commit -m "Update scraper results and execution log [skip ci]"
-            git fetch origin main
-            git rebase origin/main
             git push origin HEAD:main
           fi
       - uses: actions/upload-artifact@v4
