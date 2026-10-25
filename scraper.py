@@ -72,40 +72,40 @@ def parse_lines(html):
     return found
 
 def parse_country_sections(html):
-    """Parse candidate counts only when explicitly attached to 2026 second-round labels."""
+    """Read second-round vote pairs within each country section."""
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one("article") or soup.select_one("main") or soup
     lines = [clean(x) for x in article.get_text("\n", strip=True).splitlines()]
     lines = [x for x in lines if x and x != ":"]
-    country_re = re.compile(r"^[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}$")
-    round_re = re.compile(r"^([12])[ºo°]\s*turno\s*:?\s*(.*)$", re.I)
-    candidate_re = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos?)?\s*(?:\(|$)", re.I)
+    heading = re.compile(r"^[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}$")
+    round_label = re.compile(r"^[12][ºo°]\s*turno\s*:?", re.I)
+    candidate = re.compile(
+        r"(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos?)?\s*(?:\(|$)", re.I
+    )
     rows = []
     for i, country in enumerate(lines):
-        if not country_re.fullmatch(country):
+        if not heading.fullmatch(country) or i + 1 >= len(lines):
             continue
-        if i + 1 >= len(lines) or not round_re.match(lines[i+1]) or not lines[i+1].startswith("2"):
+        if not lines[i + 1].startswith("2") or not round_label.match(lines[i + 1]):
             continue
         found = {}
-        pending_round = None
-        for item in lines[i+1:i+24]:
-            if item.startswith("👉") or item.startswith("*"):
+        section = []
+        for line in lines[i + 1:i + 25]:
+            if line.startswith("👉") or re.match(r"^1[ºo°]\s*turno", line, re.I):
                 break
-            m = round_re.match(item)
-            if m:
-                if m.group(1) == "1":
-                    break
-                pending_round = 2
-                item = m.group(2)
-            if pending_round != 2:
-                continue
-            c = candidate_re.match(item)
-            if c:
-                name = "Lula" if c.group(1).lower().startswith("lula") else "Flávio"
-                found[name] = votes(c.group(2))
-                pending_round = None
-            elif "ainda não há dados" in item.lower():
-                pending_round = None
+            section.append(line)
+        # The article alternates '2º turno:', candidate text, sometimes on
+        # separate lines. Only match a candidate immediately after its label.
+        block = "\n".join(section)
+        pattern = re.compile(
+            r"2[ºo°]\s*turno\s*:?\s*(?:\n\s*:?\s*)?"
+            r"(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*"
+            r"(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos?)?\s*(?:\(|$)",
+            re.I | re.M,
+        )
+        for m in pattern.finditer(block):
+            name = "Lula" if m.group(1).lower().startswith("lula") else "Flávio"
+            found[name] = votes(m.group(2))
         if len(found) == 2 and all(v is not None for v in found.values()):
             rows.append({"País": country, "Lula": found["Lula"], "Flávio": found["Flávio"]})
     return rows
