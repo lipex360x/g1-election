@@ -72,35 +72,42 @@ def parse_lines(html):
     return found
 
 def parse_country_sections(html):
-    """Extract second-round votes from country headings and their adjacent blocks."""
+    """Parse candidate counts only when explicitly attached to 2026 second-round labels."""
     soup = BeautifulSoup(html, "html.parser")
     article = soup.select_one("article") or soup.select_one("main") or soup
     lines = [clean(x) for x in article.get_text("\n", strip=True).splitlines()]
-    lines = [x for x in lines if x]
+    lines = [x for x in lines if x and x != ":"]
+    country_re = re.compile(r"^[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}$")
+    round_re = re.compile(r"^([12])[ºo°]\s*turno\s*:?\s*(.*)$", re.I)
+    candidate_re = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:votos?)?\s*(?:\(|$)", re.I)
     rows = []
-    number = r"(\d{1,3}(?:\.\d{3})+|\d+)"
-    candidate = re.compile(r"^(Lula|Fl[aá]vio(?: Bolsonaro)?)\s*,\s*" + number + r"\s*(?:votos?)?\s*(?:\(|$)", re.I)
     for i, country in enumerate(lines):
-        if not re.fullmatch(r"[A-ZÀ-Ý][A-Za-zÀ-ÿ .()'-]{2,55}", country):
+        if not country_re.fullmatch(country):
             continue
-        # Country heading must be immediately followed by a 2nd-round label.
-        if not re.match(r"^2[ºo°]\s*turno\s*:?", " ".join(lines[i+1:i+3]), re.I):
-            continue
-        block = []
-        for item in lines[i+1:i+16]:
-            if re.match(r"^1[ºo°]\s*turno", item, re.I):
-                break
-            block.append(item)
-        if not block or not any(re.match(r"^2[ºo°]\s*turno", x, re.I) for x in block):
+        if i + 1 >= len(lines) or not round_re.match(lines[i+1]) or not lines[i+1].startswith("2"):
             continue
         found = {}
-        for item in block:
-            match = candidate.match(item)
-            if match:
-                name = "Lula" if match.group(1).lower().startswith("lula") else "Flávio"
-                found[name] = votes(match.group(2))
+        pending_round = None
+        for item in lines[i+1:i+24]:
+            if item.startswith("👉") or item.startswith("*"):
+                break
+            m = round_re.match(item)
+            if m:
+                if m.group(1) == "1":
+                    break
+                pending_round = 2
+                item = m.group(2)
+            if pending_round != 2:
+                continue
+            c = candidate_re.match(item)
+            if c:
+                name = "Lula" if c.group(1).lower().startswith("lula") else "Flávio"
+                found[name] = votes(c.group(2))
+                pending_round = None
+            elif "ainda não há dados" in item.lower():
+                pending_round = None
         if len(found) == 2 and all(v is not None for v in found.values()):
-            rows.append({"País":country, "Lula":found["Lula"], "Flávio":found["Flávio"]})
+            rows.append({"País": country, "Lula": found["Lula"], "Flávio": found["Flávio"]})
     return rows
 
 def parse_embedded_json(html):
