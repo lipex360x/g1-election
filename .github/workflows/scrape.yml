@@ -5,6 +5,8 @@ on:
     paths-ignore:
       - 'output/**'
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 permissions:
   contents: write
 concurrency:
@@ -13,39 +15,62 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Mark run started
-        run: |
-          mkdir -p output
-          python - <<'PY'
-          import json, datetime
-          from pathlib import Path
-          Path('output/status.json').write_text(json.dumps({'status':'running','updated_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'run_url':'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'},indent=2))
-          PY
       - name: Install dependencies
         run: pip install -r requirements.txt
-      - name: Scrape source
-        run: python scraper.py
-      - name: Persist status and results in repository
+      - name: Scrape every minute for five iterations
+        shell: bash
+        run: |
+          mkdir -p output
+          for i in 1 2 3 4 5; do
+            echo "Scrape iteration $i of 5"
+            python scraper.py || true
+            python - <<'PY'
+          import datetime, json
+          from pathlib import Path
+          status_file = Path("output/status.json")
+          now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+          try:
+              status = json.loads(status_file.read_text(encoding="utf-8"))
+          except Exception as exc:
+              status = {"status": "error", "error": "Cannot read status: " + str(exc)}
+          status["updated_at_utc"] = now
+          status["run_url"] = "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          status_file.write_text(json.dumps(status, ensure_ascii=False, indent=2), encoding="utf-8")
+          entry = {
+              "timestamp_utc": now,
+              "source_fetched_at_utc": status.get("fetched_at_utc"),
+              "status": status.get("status", "error"),
+              "countries": status.get("countries"),
+              "error": status.get("error"),
+              "run_url": status["run_url"],
+          }
+          with Path("output/execution_log.jsonl").open("a", encoding="utf-8") as log:
+              log.write(json.dumps(entry, ensure_ascii=False) + "\n")
+          print(json.dumps(entry, ensure_ascii=False))
+          PY
+            if [ "$i" -lt 5 ]; then sleep 60; fi
+          done
+      - name: Persist status, log and results
         if: always()
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p output
-          if [ ! -f output/status.json ]; then
-            python - <<'PY'
-          import json, datetime
-          from pathlib import Path
-          Path('output/status.json').write_text(json.dumps({'status':'error','error':'Scraper did not produce a status file','updated_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()},indent=2))
-          PY
+          git add -f output/status.json output/execution_log.jsonl
+          for file in output/*.csv output/*.xlsx; do
+            if [ -f "$file" ]; then git add -f "$file"; fi
+          done
+          if ! git diff --cached --quiet; then
+            git commit -m "Update scraper results and execution log [skip ci]"
+            git push origin HEAD:main
           fi
-          git add -f output/status.json output/*.csv output/*.xlsx 2>/dev/null || git add -f output/status.json
-          git diff --cached --quiet || (git commit -m "Update scraper results [skip ci]" && git push origin HEAD:main)
       - uses: actions/upload-artifact@v4
         if: always()
         with:
