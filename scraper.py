@@ -102,6 +102,15 @@ def main():
         info["final_url"] = response.url
         html = response.text
         (OUT / "debug.html").write_text(html, encoding="utf-8")
+        soup_diag = BeautifulSoup(html, "html.parser")
+        info["page_title"] = soup_diag.title.get_text(" ", strip=True) if soup_diag.title else None
+        info["html_bytes"] = len(response.content)
+        info["html_text_preview"] = soup_diag.get_text(" ", strip=True)[:1200]
+        info["article_count"] = len(soup_diag.select("article"))
+        info["table_count"] = len(soup_diag.select("table"))
+        info["script_count"] = len(soup_diag.select("script"))
+        info["contains_lula"] = "lula" in html.lower()
+        info["contains_flavio"] = "flávio" in html.lower() or "flavio" in html.lower()
         response.raise_for_status()
         records = parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
         unique = {}
