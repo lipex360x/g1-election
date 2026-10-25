@@ -144,8 +144,8 @@ def main():
         info["contains_lula"] = "lula" in html.lower()
         info["contains_flavio"] = "flávio" in html.lower() or "flavio" in html.lower()
         response.raise_for_status()
+        article_text = (soup_diag.select_one("article") or soup_diag.select_one("main") or soup_diag).get_text("\n", strip=True)
         records = parse_country_sections(html) + parse_tables(html) + parse_embedded_json(html)
-        article_text = (OUT / "article_text.txt").read_text(encoding="utf-8")
         info["article_text_chars"] = len(article_text)
         info["article_text_sample"] = article_text[:12000]
         info["candidate_contexts"] = [
