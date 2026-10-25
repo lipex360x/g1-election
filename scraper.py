@@ -112,6 +112,13 @@ def main():
         info["contains_lula"] = "lula" in html.lower()
         info["contains_flavio"] = "flávio" in html.lower() or "flavio" in html.lower()
         response.raise_for_status()
+        article_text = (OUT / "article_text.txt").read_text(encoding="utf-8")
+        info["article_text_chars"] = len(article_text)
+        info["article_text_sample"] = article_text[:14000]
+        info["candidate_contexts"] = [
+            article_text[max(0,m.start()-120):m.end()+200]
+            for m in list(re.finditer(r"Lula|Fl[aá]vio", article_text, re.I))[:30]
+        ]
         records = parse_tables(html) + parse_lines(html) + parse_embedded_json(html)
         unique = {}
         for row in records:
