@@ -2,9 +2,14 @@ name: Scrape G1 results
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'output/**'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
+concurrency:
+  group: g1-scraper
+  cancel-in-progress: false
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -14,8 +19,33 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - run: python scraper.py
+      - name: Mark run started
+        run: |
+          mkdir -p output
+          python - <<'PY'
+          import json, datetime
+          from pathlib import Path
+          Path('output/status.json').write_text(json.dumps({'status':'running','updated_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'run_url':'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'},indent=2))
+          PY
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Scrape source
+        run: python scraper.py
+      - name: Persist status and results in repository
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p output
+          if [ ! -f output/status.json ]; then
+            python - <<'PY'
+          import json, datetime
+          from pathlib import Path
+          Path('output/status.json').write_text(json.dumps({'status':'error','error':'Scraper did not produce a status file','updated_at_utc':datetime.datetime.now(datetime.timezone.utc).isoformat()},indent=2))
+          PY
+          fi
+          git add -f output/status.json output/*.csv output/*.xlsx 2>/dev/null || git add -f output/status.json
+          git diff --cached --quiet || (git commit -m "Update scraper results [skip ci]" && git push origin HEAD:main)
       - uses: actions/upload-artifact@v4
         if: always()
         with:
