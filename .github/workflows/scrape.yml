@@ -61,6 +61,8 @@ jobs:
           done
           if ! git diff --cached --quiet; then
             git commit -m "Update scraper results and execution log [skip ci]"
+            git fetch origin main
+            git rebase origin/main
             git push origin HEAD:main
           fi
       - uses: actions/upload-artifact@v4
